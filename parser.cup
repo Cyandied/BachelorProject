@@ -1,0 +1,57 @@
+import java_cup.runtime.*;
+import java.util.ArrayList;
+
+parser code {:
+  public void report_error(String message, Object info) {
+    System.err.println(message);
+  }
+
+  public void report_fatal_error(String message, Object info) {
+    report_error(message, info);
+    System.exit(1);
+  }
+:};
+
+terminal            LPARAN,RPARAN,SATIS,DIA,BOX,IMP,BIIMP,NOT,AND,OR;
+terminal Nominal    NOM;
+terminal Prop_symbol PROP;
+
+non terminal Expression            expr;
+/*non terminal ArrayList<Expression> expr_list;*/
+
+/* The precedence defined here would look something like this where the
+   lower line always will have higher precedence than the line before it.
+*/
+
+precedence left AND,OR,IMP,BIIMP;
+precedence left SATIS, BOX, DIA;
+precedence left NOT;
+
+/*expr_list ::= expr_list expr
+            | expr
+            ;*/
+
+expr      ::= LPARAN expr:e RPARAN
+                    {: RESULT = e; :}
+          |    PROP
+                    {: RESULT = new Prop_symbol(); :}
+          |     NOM
+                    {: RESULT = new Nominal(); :}
+          |    SATIS expr:n expr:e 
+                    {: RESULT = new Satisfier(n,e); :}  
+          |     BOX expr:e
+                    {: RESULT = new Box(e); :} 
+          |     DIA expr:e
+                    {: RESULT = new Not(new Box(new Not(e))); :}
+          |     expr:eL IMP expr:eR
+                    {: RESULT = new Implies(eL,eR); :}
+          |     expr:eL BIIMP expr:eR
+                    {: RESULT = new And(new Implies(eL,eR),new Implies(eR,eL)); :}
+          |     NOT expr:e
+                    {: RESULT = new Not(e); :}
+          |     expr:eL AND expr:eR
+                    {: RESULT = new And(eL,eR); :}
+          |     expr:eL OR expr:eR
+                    {: RESULT = new Or(eL,eR); :}
+          ;
+
