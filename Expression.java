@@ -38,7 +38,7 @@ class Satisfier extends Expression {
     }
 
     public String toString(){
-        return "@_"+referencePoint+":"+proposition;
+        return "@_("+referencePoint+":"+proposition+")";
     }
 }
 
@@ -51,7 +51,7 @@ class Box extends Expression {
 
     
     public String toString(){
-        return "[]"+proposition;
+        return "[]("+proposition+")";
     }
 }
 
@@ -66,7 +66,7 @@ class Implies extends Expression {
 
     
     public String toString(){
-        return propositionLeft+"->"+propositionRight;
+        return "("+propositionLeft+"->"+propositionRight+")";
     }
 }
 
@@ -79,7 +79,7 @@ class Not extends Expression {
 
     
     public String toString(){
-        return "!"+proposition;
+        return "!("+proposition+")";
     }
 }
 
@@ -94,7 +94,7 @@ class And extends Expression {
 
     
     public String toString(){
-        return propositionLeft+"*"+propositionRight;
+        return "("+propositionLeft+"*"+propositionRight+")";
     }
 }
 
@@ -108,6 +108,6 @@ class Or extends Expression {
     }
     
     public String toString(){
-        return propositionLeft+"/"+propositionRight;
+        return "("+propositionLeft+"+"+propositionRight+")";
     }
 }
