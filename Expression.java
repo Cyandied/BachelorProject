@@ -13,14 +13,14 @@ public abstract class Expression {
 
 class Prop_symbol extends Expression {
 
-    public int identifier;
+    public String identifier;
 
-    public Prop_symbol(){
-        identifier = (int)((Math.random()+1)*900);
+    public Prop_symbol(String id){
+        identifier = "p|"+id;
     }
 
     public String toString(){
-        return "p"+identifier;
+        return "p|"+identifier;
     }
 
     @Override
@@ -36,14 +36,14 @@ class Prop_symbol extends Expression {
 
 class Nominal extends Expression {
 
-    public int identifier;
+    public String identifier;
 
-    public Nominal(){
-        identifier = (int)((Math.random()+1)*900);
+    public Nominal(String id){
+        identifier = "n|"+id;
     }
     
     public String toString(){
-        return "n"+identifier;
+        return "n|"+identifier;
     }
 
     @Override

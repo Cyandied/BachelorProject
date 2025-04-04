@@ -13,8 +13,7 @@ parser code {:
 :};
 
 terminal            LPARAN,RPARAN,SATIS,DIA,BOX,IMP,BIIMP,NOT,AND,OR;
-terminal Nominal    NOM;
-terminal Prop_symbol PROP;
+terminal String    NOM,PROP;
 
 non terminal Expression            expr;
 /*non terminal ArrayList<Expression> expr_list;*/
@@ -33,12 +32,12 @@ precedence left NOT;
 
 expr      ::= LPARAN expr:e RPARAN
                     {: RESULT = e; :}
-          |    PROP
-                    {: RESULT = new Prop_symbol(); :}
-          |     NOM
-                    {: RESULT = new Nominal(); :}
+          |    PROP:p
+                    {: RESULT = new Prop_symbol(p); :}
+          |     NOM:n
+                    {: RESULT = new Nominal(n); :}
           |    SATIS expr:n expr:e 
-                    {: RESULT = new Satisfier(n,e); :}  
+                    {: RESULT = new Satisfier(new Nominal(n),e); :}  
           |     BOX expr:e
                     {: RESULT = new Box(e); :} 
           |     DIA expr:e
