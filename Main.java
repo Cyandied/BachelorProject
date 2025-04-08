@@ -15,6 +15,9 @@ public class Main {
         @SuppressWarnings("unchecked")
         Expression res = (Expression) result;
         System.out.print(res);
+        Tableaux t = new Tableaux();
+        t.doTableaux(res);
+        System.out.println(t);
       }
 
     } catch (Exception e) {

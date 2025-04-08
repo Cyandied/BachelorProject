@@ -16,7 +16,7 @@ class Prop_symbol extends Expression {
     public String identifier;
 
     public Prop_symbol(String id){
-        identifier = "p|"+id;
+        identifier = id;
     }
 
     public String toString(){
@@ -39,7 +39,7 @@ class Nominal extends Expression {
     public String identifier;
 
     public Nominal(String id){
-        identifier = "n|"+id;
+        identifier = id;
     }
     
     public String toString(){

@@ -55,8 +55,8 @@ bi_implies = "<->"
 
 /* "Variables" */
 
-    {propositional_symbol}  {return symbol(sym.PROP);}
-    {nominal}               {return symbol(sym.NOM);}
+    {propositional_symbol}  {return symbol(sym.PROP, yytext());}
+    {nominal}               {return symbol(sym.NOM, yytext());}
     
 
 /* Whitespace */

@@ -1,129 +1,164 @@
-import java.util.Arrays;
 import java.util.LinkedList;
-import java.util.List;
 
-class Tableaux {
+public class Tableaux {
 
-    public Expression startExpression;
-    public LinkedList<Vertex> tree;
-    public List<ExpressionTypes> endCases = Arrays.asList(ExpressionTypes.NOMINAL,ExpressionTypes.PROPOSITIONAL_SYMBOL);
+    Branch start;
+    LinkedList<Branch> branches;
 
-    public Tableaux(Expression e){
-        startExpression = e;
+    LinkedList<Branch> unfinishedBranches;
+
+    public Tableaux(){        
+        branches = new LinkedList<>();
+        unfinishedBranches = new LinkedList<>();
     }
 
-    private LinkedList<Vertex> findNext(Vertex from){
-        
-        LinkedList<Vertex> nextVertexs = new LinkedList<>();
-        LinkedList<Expression> expressions = from.exprs;
+    public void doTableaux(Expression startExpression) {
+        start = new Branch(new TableauxPart(startExpression, null), null);
+        unfinishedBranches.add(start);
 
-        for(int i=0;i<expressions.size();i++){
-            switch (from.getType()) {
-                case NOT:
-                    return null;
-            
-                default:
-                    return null;
+        while(!unfinishedBranches.isEmpty()){
+            Branch current = unfinishedBranches.getFirst();
+
+            LinkedList<Branch> result = current.nextStep();
+            if(result == null){
+                branches.add(current);
+                unfinishedBranches.remove(current);
             }
-        }
-    }
-
-    private boolean EvaulteBranch(Edge edge){
-        Expression endExpr = edge.end.expr;
-
-        LinkedList<EndCase> toCompare = new LinkedList<>();
-
-        if(IsEndcase(endExpr)){
-            toCompare.add(new EndCase(endExpr));
-            Vertex nextVertex = edge.start;
-            while (nextVertex.expr != startExpression) {
-                if(IsEndcase(nextVertex.expr)){
-                    toCompare.add(new EndCase(nextVertex.expr));
-                }
-                nextVertex = nextVertex.from.start;
-            }
-
-            for(int i=0;i<toCompare.size();i++){
-                for(int j=0;j<toCompare.size();j++){
-                    if(toCompare.get(i).isContradiction(toCompare.get(j))){
-                        return false;
+            else{
+                for(int i = 0; i < result.size();i++){
+                    if(!unfinishedBranches.contains(result.get(i))){
+                        unfinishedBranches.add(result.get(i));
                     }
                 }
             }
-
         }
-
-        return true;
     }
 
-    private boolean IsEndcase(Expression expr){
-        return endCases.contains(expr.getType()) || (expr.getType() == ExpressionTypes.NOT && endCases.contains(expr.getNextType()));
-    }
-
-    public boolean DoTableaux(){
-
-        Vertex startVertex = new Vertex(startExpression, null);
-        startVertex.SetTo(findNext(startVertex));
-        tree.add(startVertex);
-
-        LinkedList<Vertex> upNext = new LinkedList<>();
-        for(int i=0;i<startVertex.to.size();i++){
-            upNext.add(startVertex.to.get(i));
-        }
-
-        while (!upNext.isEmpty()) {
-            Vertex current = upNext.getFirst();
-            upNext.removeFirst();
-
-            LinkedList<Vertex> nextVertexs = findNext(current);
-            current.SetTo(nextVertexs);
-            tree.add(current);
-
-            if (!nextVertexs.isEmpty()) {
-                for(int i=0;i<current.to.size();i++){
-                    upNext.add(current.to.get(i));
-                }
-            }
-            
-        }
-        
-
+    public Boolean isValid(){
         return false;
     }
 
+    public String toString(){
+        String s = "";
+        for(int i = 0; i < branches.size();i++){
+            s += "\n"+branches.get(i).toString();
+        }
+        return s;
+    }
+
+}
+
+class Branch {
+
+    LinkedList<TableauxPart> tableauxParts;
+    LinkedList<EndCase> endcases;
+    LinkedList<TableauxPart> upNext;
+    Branch from;
+
+    public Branch(TableauxPart startTab, Branch from){
+        this.tableauxParts = new LinkedList<>();
+        this.tableauxParts.add(startTab);
+
+        this.upNext = new LinkedList<>();
+        upNext.add(startTab);
+
+        endcases = new LinkedList<>();
+        this.from = from;
+    }
+
+    public LinkedList<Branch> nextStep(){
+
+        LinkedList<Branch> returnBranches = new LinkedList<>();
+
+        if(upNext.isEmpty()){
+            return null;
+        }
+
+        TableauxPart current = upNext.getFirst();
+        upNext.removeFirst();
+
+        Expression expr = current.expr;
+        ExpressionTypes type = expr.getType();
+
+        if(isEndcase(expr)){
+            endcases.add(new EndCase(expr));
+            returnBranches.add(this);
+            return returnBranches;
+        }
+
+        switch (type) {
+            case AND:
+                And and = (And)expr;
+                TableauxPart andLeft = new TableauxPart(and.propositionLeft, current);
+                TableauxPart andRight = new TableauxPart(and.propositionRight, current);
+                upNext.add(andLeft);
+                upNext.add(andRight);
+                tableauxParts.add(andLeft);
+                tableauxParts.add(andRight);
+                returnBranches.add(this);
+                break; 
+            case OR:
+                Or or = (Or)expr;
+                TableauxPart orLeft = new TableauxPart(or.propositionLeft, current);
+                TableauxPart orRight = new TableauxPart(or.propositionRight, current); 
+                returnBranches.add(this);
+                returnBranches.add(new Branch(orLeft, this));   
+                returnBranches.add(new Branch(orRight, this));  
+                break;
+            default:
+                System.err.println("Encountered an unexpeted ExpressionTypes: "+type);
+                return null;
+        }
+
+        return returnBranches;
+    }
+
+    public Boolean isEndcase(Expression e){
+        if(e.getType() == ExpressionTypes.NOT){
+            e = ((Not)e).proposition;
+        }
+        Boolean isLoneNominal = e.getType() == ExpressionTypes.NOMINAL;
+        Boolean isLoneProp = e.getType() == ExpressionTypes.PROPOSITIONAL_SYMBOL;
+        return isLoneNominal || isLoneProp;
+    }
+
+    public String toString(){
+        String s = "New branch:";
+        for(int i = 0; i < tableauxParts.size();i++){
+            s += "\n"+tableauxParts.get(i).toString();
+        }
+        return s;
+    }
+    
+}
+
+class TableauxPart {
+    Expression expr;
+    TableauxPart from;
+
+    public TableauxPart(Expression e, TableauxPart from){
+        this.expr = e;
+        this.from = from;
+    }
+
+    public String toString(){
+        return expr.toString();
+    }
 }
 
 class EndCase {
+    Expression expr;
     String id;
-    boolean isNot;
+    Boolean isNot = false;
 
     public EndCase(Expression e){
-        switch (e.getType()) {
-            case NOMINAL:
-                id = getId(e);
-                isNot = false;
-                break;
-            case PROPOSITIONAL_SYMBOL:
-                id = getId(e);
-                isNot = false;
-                break;
-            case NOT:
-                id = getId(((Not)e).proposition);
-                isNot = true;
-            default:
-                break;
-        }
-    }
+        this.expr = e;
+        if(e.getType() == ExpressionTypes.NOT){
+            id = getId(((Not)e).proposition);
+            isNot = true;
+        } else id = getId(e);
 
-    public boolean isContradiction(EndCase compare){
-        if(id.equals(compare.id)){
-            if(isNot != compare.isNot){
-                return true;
-            }
-        }
-        return false;
     }
-}
 
     public String getId(Expression e){
         switch (e.getType()) {
@@ -132,27 +167,15 @@ class EndCase {
             case PROPOSITIONAL_SYMBOL:
                 return ((Prop_symbol)e).identifier;
             default:
-                return null;
-    }
-}
-
-class Vertex {
-
-    public LinkedList<Expression> exprs = new LinkedList<>();
-    public Vertex from;
-    public LinkedList<Vertex> to = new LinkedList<>();
-
-    public Vertex(Expression e,Vertex f){
-        exprs.add(e);
-        from = f;
+                return "";
+        }
     }
 
-    public void SetTo(LinkedList<Vertex> t){
-        to = t;
-    }
-
-    public void AddExpression(Expression e){
-        exprs.add(e);
+    public Boolean contradicts(EndCase otherEndcase){
+        if(id.equals(otherEndcase.id)){
+            return isNot != otherEndcase.isNot;
+        }
+        return false;
     }
 
 }

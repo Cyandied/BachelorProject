@@ -37,7 +37,7 @@ expr      ::= LPARAN expr:e RPARAN
           |     NOM:n
                     {: RESULT = new Nominal(n); :}
           |    SATIS expr:n expr:e 
-                    {: RESULT = new Satisfier(new Nominal(n),e); :}  
+                    {: RESULT = new Satisfier(n,e); :}  
           |     BOX expr:e
                     {: RESULT = new Box(e); :} 
           |     DIA expr:e
