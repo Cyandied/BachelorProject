@@ -14,7 +14,7 @@ public class Main {
       if(result instanceof Expression){
         @SuppressWarnings("unchecked")
         Expression res = (Expression) result;
-        System.out.print(res);
+        System.out.println("Expression: "+res);
         Tableaux t = new Tableaux();
         t.doTableaux(res);
         System.out.println(t);
