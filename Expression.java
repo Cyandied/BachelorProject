@@ -9,6 +9,8 @@ public abstract class Expression {
     // Ex. Not(new Or(p,q)).getNextType() -> [ExpressionTypes.OR]
     // Ex. Or(new Nominal(), new And(p,q)) -> [ExpressionTypes.NOMINAL, ExpressionTypes.AND]
     abstract ArrayList<ExpressionTypes> getNextType();
+    // Compares the current Expression with a given model expression, returns true if they are perfect identical, otherwise it returns false.
+    abstract Boolean compare(Expression model);
 }
 
 class Prop_symbol extends Expression {
@@ -16,7 +18,7 @@ class Prop_symbol extends Expression {
     public String identifier;
 
     public Prop_symbol(String id){
-        identifier = "p|"+id;
+        identifier = id;
     }
 
     public String toString(){
@@ -32,6 +34,15 @@ class Prop_symbol extends Expression {
     ArrayList<ExpressionTypes> getNextType() {
         return new ArrayList<ExpressionTypes>();
     }
+
+    @Override
+    Boolean compare(Expression model) {
+        if(model.getType() == this.getType()){
+            Prop_symbol cast = (Prop_symbol)model;
+            return identifier.equals(cast.identifier);
+        }
+        return false;
+    }
 }
 
 class Nominal extends Expression {
@@ -39,7 +50,7 @@ class Nominal extends Expression {
     public String identifier;
 
     public Nominal(String id){
-        identifier = "n|"+id;
+        identifier = id;
     }
     
     public String toString(){
@@ -55,6 +66,15 @@ class Nominal extends Expression {
     ArrayList<ExpressionTypes> getNextType() {
         return new ArrayList<ExpressionTypes>();
     }
+
+    @Override
+    Boolean compare(Expression model) {
+        if(model.getType() == this.getType()){
+            Nominal cast = (Nominal)model;
+            return identifier.equals(cast.identifier);
+        }
+        return false;
+    }
 }
 
 class Satisfier extends Expression {
@@ -62,12 +82,16 @@ class Satisfier extends Expression {
     public Expression proposition;
 
     public Satisfier(Expression nominal, Expression expr){
+        if(nominal.getType() != ExpressionTypes.NOMINAL){
+            System.err.println("Invalid assingment! Non-nominal assinged to satistifer referencePoint, cannot interpret!");
+            System.exit(0);
+        }
         referencePoint = nominal;
         proposition = expr;
     }
 
     public String toString(){
-        return "@_("+referencePoint+":"+proposition+")";
+        return "@("+referencePoint+":"+proposition+")";
     }
 
     @Override
@@ -81,24 +105,33 @@ class Satisfier extends Expression {
         list.add(proposition.getType());
         return list;
     }
+
+    @Override
+    Boolean compare(Expression model) {
+        if(model.getType() == this.getType()){
+            Satisfier cast = (Satisfier)model;
+            return proposition.compare(cast.proposition) && referencePoint.compare(cast.referencePoint);
+        }
+        return false;
+    }
 }
 
-class Box extends Expression {
+class Diamond extends Expression {
     public Expression proposition;
 
-    public Box(Expression expr){
+    public Diamond(Expression expr){
         proposition = expr;
     }
 
     
     public String toString(){
-        return "[]("+proposition+")";
+        return "<>("+proposition+")";
     }
 
 
     @Override
     ExpressionTypes getType() {
-        return ExpressionTypes.BOX;
+        return ExpressionTypes.DIAMOND;
     }
 
 
@@ -108,35 +141,15 @@ class Box extends Expression {
         list.add(proposition.getType());
         return list;
     }
-}
-
-class Implies extends Expression {
-    public Expression propositionLeft;
-    public Expression propositionRight;
-
-    public Implies(Expression exprLeft, Expression exprRight){
-        propositionLeft = exprLeft;
-        propositionRight = exprRight;
-    }
-
-    
-    public String toString(){
-        return "("+propositionLeft+"->"+propositionRight+")";
-    }
 
 
     @Override
-    ExpressionTypes getType() {
-        return ExpressionTypes.IMPLIES;
-    }
-
-
-    @Override
-    ArrayList<ExpressionTypes> getNextType() {
-        ArrayList<ExpressionTypes> list = new ArrayList<ExpressionTypes>();
-        list.add(propositionLeft.getType());
-        list.add(propositionRight.getType());
-        return list;
+    Boolean compare(Expression model) {
+        if(model.getType() == this.getType()){
+            Diamond cast = (Diamond)model;
+            return proposition.compare(cast.proposition);
+        }
+        return false;
     }
 }
 
@@ -164,6 +177,15 @@ class Not extends Expression {
         ArrayList<ExpressionTypes> list = new ArrayList<ExpressionTypes>();
         list.add(proposition.getType());
         return list;
+    }
+
+    @Override
+    Boolean compare(Expression model) {
+        if(model.getType() == this.getType()){
+            Not cast = (Not)model;
+            return proposition.compare(cast.proposition);
+        }
+        return false;
     }
 }
 
@@ -195,6 +217,15 @@ class And extends Expression {
         list.add(propositionRight.getType());
         return list;
     }
+
+    @Override
+    Boolean compare(Expression model) {
+        if(model.getType() == this.getType()){
+            And cast = (And)model;
+            return propositionLeft.compare(cast.propositionLeft) && propositionRight.compare(cast.propositionRight);
+        }
+        return false;
+    }
 }
 
 class Or extends Expression {
@@ -221,5 +252,14 @@ class Or extends Expression {
         list.add(propositionLeft.getType());
         list.add(propositionRight.getType());
         return list;
+    }
+
+    @Override
+    Boolean compare(Expression model) {
+        if(model.getType() == this.getType()){
+            And cast = (And)model;
+            return propositionLeft.compare(cast.propositionLeft) && propositionRight.compare(cast.propositionRight);
+        }
+        return false;
     }
 }
