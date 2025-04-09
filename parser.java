@@ -247,7 +247,7 @@ class CUP$parser$actions {
 		int eleft = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).left;
 		int eright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
 		Expression e = (Expression)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
-		 RESULT = new Box(e); 
+		 RESULT = new Not(new Diamond(new Not(e))); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("expr",0, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -259,7 +259,7 @@ class CUP$parser$actions {
 		int eleft = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).left;
 		int eright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
 		Expression e = (Expression)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
-		 RESULT = new Not(new Box(new Not(e))); 
+		 RESULT = new Diamond(e); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("expr",0, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -274,7 +274,7 @@ class CUP$parser$actions {
 		int eRleft = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).left;
 		int eRright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
 		Expression eR = (Expression)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
-		 RESULT = new Implies(eL,eR); 
+		 RESULT = new Or(new Not(eL),eR); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("expr",0, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -289,7 +289,7 @@ class CUP$parser$actions {
 		int eRleft = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).left;
 		int eRright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
 		Expression eR = (Expression)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
-		 RESULT = new And(new Implies(eL,eR),new Implies(eR,eL)); 
+		 RESULT = new And(new Or(new Not(eL),eR),new Or(new Not(eR),eL)); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("expr",0, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;

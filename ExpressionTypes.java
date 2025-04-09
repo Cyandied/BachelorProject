@@ -2,7 +2,7 @@ public enum ExpressionTypes {
     PROPOSITIONAL_SYMBOL,
     NOMINAL,
     SATISFIER,
-    BOX,
+    DIAMOND,
     IMPLIES,
     NOT,
     AND,
