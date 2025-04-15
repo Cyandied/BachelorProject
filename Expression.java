@@ -162,7 +162,7 @@ class Not extends Expression {
 
     
     public String toString(){
-        return "!("+proposition+")";
+        return "-("+proposition+")";
     }
 
 
@@ -200,7 +200,7 @@ class And extends Expression {
 
     
     public String toString(){
-        return "("+propositionLeft+"*"+propositionRight+")";
+        return "("+propositionLeft+" V "+propositionRight+")";
     }
 
 
@@ -238,7 +238,7 @@ class Or extends Expression {
     }
     
     public String toString(){
-        return "("+propositionLeft+"+"+propositionRight+")";
+        return "("+propositionLeft+" /\\ "+propositionRight+")";
     }
 
     @Override

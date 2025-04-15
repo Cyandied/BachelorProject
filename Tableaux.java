@@ -39,9 +39,11 @@ public class Tableaux {
     }
 
     public String toString(){
-        String s = "";
+        String s = "\n";
         for(int i = 0; i < branches.size();i++){
-            s += "\n"+branches.get(i).toString();
+            s += "Branch nr: "+i;
+            s += branches.get(i).toString();
+            s += "\n";
         }
         return s;
     }
@@ -162,8 +164,10 @@ class Branch {
                         returnBranches.add(this);
                         break;
                     default:
-                        System.err.println("Encountered an unexpeted ExpressionType in Satisfier(...): "+satisInner.getType());
-                        return null;
+                        System.err.println("Attempted to break down: "+current.expr+" but encountered an unexpeted ExpressionType in Satisfier(...): "+satisInner.getType());
+                        this.currentStep = current;
+                        returnBranches.add(this);
+                        break;
                 }
             break;
             case NOT:
@@ -246,18 +250,24 @@ class Branch {
                             returnBranches.add(this);
                         }
                         else {
-                            System.err.println("Encountered unexpected Expression type in Not(Satisfier(...)): "+satisfier2.proposition.getType() );
-                            return null;
+                            System.err.println("Attempted to break down: "+current.expr+" but encountered unexpected Expression type in Not(Satisfier(...)): "+satisfier2.proposition.getType());
+                            this.currentStep = current;
+                            returnBranches.add(this);
+                            break;
                         }
                     break;
                     default:
-                        System.err.println("Encountered an unexpeted ExpressionType in Not(...): "+ notInner.getType());
-                        return null;
+                        System.err.println("Attempted to break down: "+current.expr+"but encountered an unexpeted ExpressionType in Not(...):" + notInner.getType());
+                        this.currentStep = current;
+                        returnBranches.add(this);
+                        break;
                 }
             break;
             default:
-                System.err.println("Encountered an unexpeted ExpressionType: "+type);
-                return null;
+                System.err.println("Attempted to break down: "+current.expr+"but encountered an unexpeted ExpressionType: "+type);
+                this.currentStep = current;
+                returnBranches.add(this);
+                break;
         }
 
         return returnBranches;
@@ -277,7 +287,9 @@ class Branch {
         TableauxPart next = this.currentStep;
         while (next != null) {
             s.add(next.toString());
-            next = next.from;
+            if(tableauxParts.contains(next.from)){
+                next = next.from;
+            } else next = null;
         }
         String string = "";
         for(int i = s.size()-1;i>=0;i--){
@@ -309,7 +321,7 @@ class TableauxPart {
         if(expr.compare(model)){
             return true;
         }
-        else if(from == null){
+        if(from == null){
             return false;
         }
         return from.seekExpressionInBranch(model);
@@ -330,7 +342,7 @@ class TableauxPart {
         else if(expr.getType() == ExpressionTypes.NOT){
             Not inner = (Not)expr;
             if(inner.proposition.getType() == ExpressionTypes.SATISFIER){
-                Satisfier notInner = (Satisfier)expr;
+                Satisfier notInner = (Satisfier)inner.proposition;
                 Boolean isOwnNominal = ((Nominal)notInner.referencePoint).identifier.equals(selfId);
                 if(notInner.proposition.compare(target) && !isOwnNominal && rightTargetRightNominal){
                     return true;
@@ -340,7 +352,7 @@ class TableauxPart {
                 }
             }
         }
-        else if(from == null){
+        if(from == null){
             return false;
         }
         return from.seekDiamondRuleExpression(target,selfId,flag);
@@ -357,7 +369,7 @@ class TableauxPart {
                 }
             }
         }
-        else if(from == null){
+        if(from == null){
             return null;
         }
         return from.seekNotDiamondRule(nominalID);
