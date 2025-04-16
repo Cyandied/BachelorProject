@@ -12,7 +12,7 @@ parser code {:
   }
 :};
 
-terminal            LPARAN,RPARAN,SATIS,DIA,BOX,IMP,BIIMP,NOT,AND,OR;
+terminal            LPARAN,RPARAN,SATIS,E,DIA,BOX,IMP,BIIMP,NOT,AND,OR;
 terminal String    NOM,PROP;
 
 non terminal Expression            expr;
@@ -38,6 +38,8 @@ expr      ::= LPARAN expr:e RPARAN
                     {: RESULT = new Nominal(n); :}
           |    SATIS expr:n expr:e 
                     {: RESULT = new Satisfier(n,e); :}  
+          |    E expr:e
+                    {: RESULT = new E(e); :}
           |     BOX expr:e
                     {: RESULT = new Not(new Diamond(new Not(e))); :} 
           |     DIA expr:e

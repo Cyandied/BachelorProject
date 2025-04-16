@@ -22,8 +22,6 @@ import java_cup.runtime.*;
 LineTerminator = \r|\n|\r\n
 WhiteSpace     = {LineTerminator} | [ \t\f]
 
-dec_bool = "FALSE" | "TRUE"
-
 propositional_symbol = [a-z]
 nominal = [A-Z]
 
@@ -42,6 +40,7 @@ bi_implies = "<->"
 	")"				{return symbol(sym.RPARAN);}
 
     "@"             {return symbol(sym.SATIS);}
+    "$"             {return symbol(sym.E);}
 
     {diamond}       {return symbol(sym.DIA);}
     {box}           {return symbol(sym.BOX);}

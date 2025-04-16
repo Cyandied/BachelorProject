@@ -9,8 +9,6 @@ public abstract class Expression {
     // Ex. Not(new Or(p,q)).getNextType() -> [ExpressionTypes.OR]
     // Ex. Or(new Nominal(), new And(p,q)) -> [ExpressionTypes.NOMINAL, ExpressionTypes.AND]
     abstract ArrayList<ExpressionTypes> getNextType();
-    // Compares the current Expression with a given model expression, returns true if they are perfect identical, otherwise it returns false.
-    abstract Boolean compare(Expression model);
 }
 
 class Prop_symbol extends Expression {
@@ -35,9 +33,8 @@ class Prop_symbol extends Expression {
         return new ArrayList<ExpressionTypes>();
     }
 
-    @Override
-    Boolean compare(Expression model) {
-        if(model.getType() == this.getType()){
+    public boolean equals(Object model) {
+        if(model instanceof Prop_symbol){
             Prop_symbol cast = (Prop_symbol)model;
             return identifier.equals(cast.identifier);
         }
@@ -67,9 +64,8 @@ class Nominal extends Expression {
         return new ArrayList<ExpressionTypes>();
     }
 
-    @Override
-    Boolean compare(Expression model) {
-        if(model.getType() == this.getType()){
+    public boolean equals(Object model) {
+        if(model instanceof Nominal){
             Nominal cast = (Nominal)model;
             return identifier.equals(cast.identifier);
         }
@@ -78,7 +74,7 @@ class Nominal extends Expression {
 }
 
 class Satisfier extends Expression {
-    public Expression referencePoint;
+    public Nominal referencePoint;
     public Expression proposition;
 
     public Satisfier(Expression nominal, Expression expr){
@@ -86,7 +82,7 @@ class Satisfier extends Expression {
             System.err.println("Invalid assingment! Non-nominal assinged to satistifer referencePoint, cannot interpret!");
             System.exit(0);
         }
-        referencePoint = nominal;
+        referencePoint = (Nominal)nominal;
         proposition = expr;
     }
 
@@ -106,11 +102,42 @@ class Satisfier extends Expression {
         return list;
     }
 
-    @Override
-    Boolean compare(Expression model) {
-        if(model.getType() == this.getType()){
+    public boolean equals(Object model) {
+        if(model instanceof Satisfier){
             Satisfier cast = (Satisfier)model;
-            return proposition.compare(cast.proposition) && referencePoint.compare(cast.referencePoint);
+            return proposition.equals(cast.proposition) && referencePoint.equals(cast.referencePoint);
+        }
+        return false;
+    }
+}
+
+class E extends Expression {
+    public Expression proposition;
+
+    public E(Expression expr){
+        proposition = expr;
+    }
+
+    public String toString(){
+        return "E("+proposition+")";
+    }
+
+    @Override
+    ExpressionTypes getType() {
+        return ExpressionTypes.E;
+    }
+
+    @Override
+    ArrayList<ExpressionTypes> getNextType() {
+        ArrayList<ExpressionTypes> list = new ArrayList<ExpressionTypes>();
+        list.add(proposition.getType());
+        return list;
+    }
+
+    public boolean equals(Object model){
+        if(model instanceof E){
+            E cast = (E)model;
+            return proposition.equals(cast.proposition);
         }
         return false;
     }
@@ -143,11 +170,10 @@ class Diamond extends Expression {
     }
 
 
-    @Override
-    Boolean compare(Expression model) {
-        if(model.getType() == this.getType()){
+    public boolean equals(Object model) {
+        if(model instanceof Diamond){
             Diamond cast = (Diamond)model;
-            return proposition.compare(cast.proposition);
+            return proposition.equals(cast.proposition);
         }
         return false;
     }
@@ -179,11 +205,10 @@ class Not extends Expression {
         return list;
     }
 
-    @Override
-    Boolean compare(Expression model) {
-        if(model.getType() == this.getType()){
+    public boolean equals(Object model) {
+        if(model instanceof Not){
             Not cast = (Not)model;
-            return proposition.compare(cast.proposition);
+            return proposition.equals(cast.proposition);
         }
         return false;
     }
@@ -200,7 +225,7 @@ class And extends Expression {
 
     
     public String toString(){
-        return "("+propositionLeft+" V "+propositionRight+")";
+        return "("+propositionLeft+" /\\ "+propositionRight+")";
     }
 
 
@@ -218,11 +243,10 @@ class And extends Expression {
         return list;
     }
 
-    @Override
-    Boolean compare(Expression model) {
-        if(model.getType() == this.getType()){
+    public boolean equals(Object model) {
+        if(model instanceof And){
             And cast = (And)model;
-            return propositionLeft.compare(cast.propositionLeft) && propositionRight.compare(cast.propositionRight);
+            return propositionLeft.equals(cast.propositionLeft) && propositionRight.equals(cast.propositionRight);
         }
         return false;
     }
@@ -238,7 +262,7 @@ class Or extends Expression {
     }
     
     public String toString(){
-        return "("+propositionLeft+" /\\ "+propositionRight+")";
+        return "("+propositionLeft+" V "+propositionRight+")";
     }
 
     @Override
@@ -254,11 +278,10 @@ class Or extends Expression {
         return list;
     }
 
-    @Override
-    Boolean compare(Expression model) {
-        if(model.getType() == this.getType()){
-            And cast = (And)model;
-            return propositionLeft.compare(cast.propositionLeft) && propositionRight.compare(cast.propositionRight);
+    public boolean equals(Object model) {
+        if(model instanceof Or){
+            Or cast = (Or)model;
+            return propositionLeft.equals(cast.propositionLeft) && propositionRight.equals(cast.propositionRight);
         }
         return false;
     }
