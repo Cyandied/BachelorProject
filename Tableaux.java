@@ -3,6 +3,7 @@ import java.util.LinkedList;
 
 public class Tableaux {
 
+    Expression rootFormula;
     Branch start;
     LinkedList<Branch> branches;
 
@@ -14,6 +15,7 @@ public class Tableaux {
     }
 
     public void doTableaux(Expression startExpression) {
+        rootFormula = startExpression;
         start = new Branch(new TableauxPart(startExpression, null,null,null), null);
         unfinishedBranches.add(start);
 
