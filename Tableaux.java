@@ -67,6 +67,9 @@ class Branch {
     boolean notEInEffect = false;
     LinkedList<TableauxPart> origNotEParts;
 
+    boolean notDiamondInEffect = false;
+    LinkedList<TableauxPart> origNotDiamondParts;
+
     public Branch(TableauxPart startTab, Branch from){
         this.tableauxParts = new LinkedList<>();
         this.tableauxParts.add(startTab);
@@ -82,26 +85,39 @@ class Branch {
             exprRulesApplied = new HashMap<Expression,LinkedList<TableauxRules>>() {};
             nomsInBranch = new LinkedList<>();
             origNotEParts = new LinkedList<>();
+            origNotDiamondParts = new LinkedList<>();
         } else {
             exprRulesApplied = this.from.exprRulesApplied;
             nomsInBranch = this.from.nomsInBranch;
             origNotEParts = this.from.origNotEParts;
+            origNotDiamondParts = this.from.origNotDiamondParts;
+        }
+    }
+
+    public void addToBranch(TableauxPart part, boolean upNext){
+        if(currentStep.seekExpressionInBranch(part.expr)){
+            return;
+        }
+        this.currentStep = part;
+        this.tableauxParts.add(part);
+        if(upNext){
+            this.upNext.add(part);
         }
     }
 
     public void documentRule(Expression expr, TableauxRules ruleApplied){
+        if(exprRulesApplied.get(expr) == null){
+            exprRulesApplied.put(expr,new LinkedList<>());
+        }
         exprRulesApplied.get(expr).add(ruleApplied);
     }
 
     public void applyAnd(Expression parent, Expression left, Expression right, TableauxPart current,LinkedList<Branch> returnBranches,TableauxRules ruleApplied){
         documentRule(parent, ruleApplied);
         TableauxPart andLeft = new TableauxPart(left, this.currentStep,current,ruleApplied);
-        TableauxPart andRight = new TableauxPart(right, andLeft,current,ruleApplied);
-        this.currentStep = andRight;
-        this.upNext.add(andLeft);
-        this.upNext.add(andRight);
-        this.tableauxParts.add(andLeft);
-        this.tableauxParts.add(andRight);
+        addToBranch(andLeft, true);
+        TableauxPart andRight = new TableauxPart(right, this.currentStep,current,ruleApplied);
+        addToBranch(andRight, true);
         returnBranches.add(this);
     }
 
@@ -124,36 +140,63 @@ class Branch {
         }
         TableauxPart newNotE = new TableauxPart(new Not(new Satisfier(nominal, origNotEExpr)), this.currentStep, origNotEPart,TableauxRules.NOTE);
         documentRule(origNotEPart.expr, TableauxRules.NOTE);
-        this.currentStep = newNotE;
-        this.tableauxParts.add(newNotE);
+        addToBranch(newNotE, false);
         upNext.add(newNotE);
+    }
+
+    public void applyNotDiamond(TableauxPart origNotDiamondPart){
+        Diamond notSatisDiamond = (Diamond)((Satisfier)((Not) origNotDiamondPart.expr).proposition).proposition;
+        Nominal desiredNominal = ((Satisfier)((Not) origNotDiamondPart.expr).proposition).referencePoint;
+        Nominal result = this.currentStep.seekNotDiamondRule(desiredNominal.identifier);
+        if(result != null){
+            TableauxPart notSatisOldNominal = new TableauxPart(new Not(new Satisfier(result,notSatisDiamond.proposition)), this.currentStep, origNotDiamondPart,TableauxRules.NOTDIAMOND);
+            documentRule(notSatisDiamond, TableauxRules.NOTDIAMOND);
+            addToBranch(notSatisOldNominal, true);
+        }
     }
 
     public void newNominal(String id,TableauxPart from, TableauxPart source){
         nomsInBranch.add(id);
         TableauxPart ref = new TableauxPart(new Satisfier(new Nominal(id), new Nominal(id)), from, source, TableauxRules.REF);
-        this.currentStep = ref;
-        this.tableauxParts.add(ref);
+        addToBranch(ref, false);
         if(notEInEffect){
             for(int i = 0;i<origNotEParts.size();i++){
                 applyNotE(origNotEParts.get(i), new Nominal(id));
             }
         }
+        if(notDiamondInEffect){
+            for(int i = 0;i<origNotDiamondParts.size();i++){
+                applyNotDiamond(origNotDiamondParts.get(i));
+            }
+        }
     }
 
-    public void applyNomRule(TableauxPart target,Expression innerPart,String targetId){
-        TableauxRules rule = innerPart.getType() == ExpressionTypes.DIAMOND ? TableauxRules.NOM2 : TableauxRules.NOM1;
-        LinkedList<String> foundNoms = this.currentStep.seekAllNominalRelations(targetId, null);
-        if(foundNoms.size() > 0){
-            for(int i = 0; i<foundNoms.size();i++){
-                TableauxPart newRelation = new TableauxPart(new Satisfier(new Nominal(foundNoms.get(i)), innerPart), this.currentStep, target, rule);
-                if(this.currentStep.seekExpressionInBranch(new Satisfier(new Nominal(foundNoms.get(i)), innerPart))){
-                    return;
+    public void applyNomRule(TableauxPart target,String targetId){
+        LinkedList<Satisfier> foundNomRelations = this.currentStep.seekAllNominalRelations(targetId, null);
+        LinkedList<Satisfier> foundNomRuleFormula = this.currentStep.seekAllNomRuleFormula(targetId, null);
+
+        if(foundNomRelations.size() > 0 && foundNomRuleFormula.size() > 0){
+            for(int i = 0; i<foundNomRelations.size();i++){
+                String oldNom = foundNomRelations.get(i).referencePoint.identifier;
+                String newNom = ((Nominal)foundNomRelations.get(i).proposition).identifier;
+
+                if(oldNom == newNom){
+                    continue;
                 }
-                documentRule(target.expr, rule);
-                this.currentStep = newRelation;
-                this.tableauxParts.add(newRelation);
-                this.upNext.add(newRelation);
+
+                for(int j = 0; j<foundNomRuleFormula.size();j++){
+                    Expression innerPart = foundNomRuleFormula.get(j).proposition;
+                    TableauxRules rule = innerPart.getType() == ExpressionTypes.DIAMOND ? TableauxRules.NOM2 : TableauxRules.NOM1;
+                    TableauxPart newRelation = new TableauxPart(new Satisfier(new Nominal(newNom), innerPart), this.currentStep, target, rule);
+
+                    boolean expressionInBranch = this.currentStep.seekExpressionInBranch(newRelation.expr);
+                    if(expressionInBranch){
+                        continue;
+                    }
+                    documentRule(target.expr, rule);
+                    addToBranch(newRelation, true);
+                }
+                
             }
         }
     }
@@ -173,11 +216,9 @@ class Branch {
         ExpressionTypes type = expr.getType();
 
         exprRulesApplied.put(expr, new LinkedList<>());
-
-        if(isEndcase(expr)){
-            endcases.add(new EndCase(expr));
-            returnBranches.add(this);
-            return returnBranches;
+        
+        for (String nominalId : nomsInBranch) {
+            applyNomRule(current, nominalId);
         }
 
         switch (type) {
@@ -200,10 +241,8 @@ class Branch {
                         Not statisNot = (Not)satisProp;
                         TableauxPart notSatis = new TableauxPart(new Not(new Satisfier(satisNominal, statisNot.proposition)), this.currentStep,current,TableauxRules.NOT);
                         documentRule(expr, TableauxRules.NOT);
-                        this.currentStep = notSatis;
+                        addToBranch(notSatis, true);
                         returnBranches.add(this);
-                        upNext.add(notSatis);
-                        tableauxParts.add(notSatis);
                         break;
                     case AND:
                         And satisAnd = (And)satisProp;
@@ -216,9 +255,7 @@ class Branch {
                     case SATISFIER:
                         TableauxPart satisSatis = new TableauxPart(satisProp, this.currentStep,current,TableauxRules.SATIS);
                         documentRule(expr, TableauxRules.SATIS);
-                        this.currentStep = satisSatis;
-                        upNext.add(satisSatis);
-                        tableauxParts.add(satisSatis);
+                        addToBranch(satisSatis, true);
                         returnBranches.add(this);
                         break;
                     case DIAMOND:
@@ -227,17 +264,15 @@ class Branch {
                         boolean branchHasDiamondRuleExpression = this.currentStep.seekLoopCondition(diamond.proposition,satisNominal.identifier,false);
                         if(!diamondHasLoneNominal && !branchHasDiamondRuleExpression){
                             String id = satisNominal.identifier;
-                            TableauxPart newNominalSatis = new TableauxPart(new Satisfier(new Nominal("D"+id+id),diamond.proposition), this.currentStep,current,TableauxRules.DIAMOND,current.lineNumber+1);
-                            TableauxPart newDiamondNominal = new TableauxPart(new Satisfier(satisNominal,new Diamond(new Nominal(id+id))), newNominalSatis,current,TableauxRules.DIAMOND,current.lineNumber+2);
+                            String newNominalId = "D"+id+id;
+
+                            TableauxPart newNominalSatis = new TableauxPart(new Satisfier(new Nominal(newNominalId),diamond.proposition), this.currentStep,current,TableauxRules.DIAMOND,current.lineNumber+1);
+                            addToBranch(newNominalSatis, true);
+                            TableauxPart newDiamondNominal = new TableauxPart(new Satisfier(satisNominal,new Diamond(new Nominal(newNominalId))), this.currentStep,current,TableauxRules.DIAMOND,current.lineNumber+2);
+                            addToBranch(newDiamondNominal, false);
                             documentRule(expr, TableauxRules.DIAMOND);
-                            this.currentStep = newDiamondNominal;
-                            upNext.add(newNominalSatis);
-                            tableauxParts.add(newNominalSatis);
-                            tableauxParts.add(newDiamondNominal);
-                            newNominal("D"+id+id, this.currentStep, newNominalSatis);
-                        }
-                        if(diamondHasLoneNominal){
-                            applyNomRule(current, diamond, satisNominal.identifier);
+
+                            newNominal(newNominalId, this.currentStep, newNominalSatis);
                         }
                         returnBranches.add(this);
                         break;
@@ -249,9 +284,7 @@ class Branch {
                             String id = satisNominal.identifier;
                             TableauxPart newESatis = new TableauxPart(new Satisfier(new Nominal("E"+id+id), e.proposition), this.currentStep, current, TableauxRules.E);
                             documentRule(expr, TableauxRules.E);
-                            this.currentStep = newESatis;
-                            upNext.add(newESatis);
-                            tableauxParts.add(newESatis);
+                            addToBranch(newESatis, true);
                             newNominal("E"+id+id,this.currentStep, newESatis);
                         }
                         returnBranches.add(this);
@@ -261,10 +294,10 @@ class Branch {
                         if(!nomsInBranch.contains(satisLoneNominal.identifier)){
                             newNominal(satisLoneNominal.identifier, current, current);
                         }
-                        applyNomRule(current, satisLoneNominal, satisNominal.identifier);
+                        returnBranches.add(this);
                         break;
                     case PROPOSITIONAL_SYMBOL:
-                        applyNomRule(current, satisProp, satisNominal.identifier);
+                        returnBranches.add(this);
                         break;
                     default:
                         System.err.println("Attempted to break down: "+current.expr+" but encountered an unexpeted ExpressionType in Satisfier(...): "+satisProp.getType());
@@ -279,10 +312,8 @@ class Branch {
                         Not notNot = (Not)notProp;
                         TableauxPart prop = new TableauxPart(notNot.proposition, this.currentStep,current,TableauxRules.NOTNOT);
                         documentRule(expr, TableauxRules.NOTNOT);
-                        this.currentStep = prop;
+                        addToBranch(prop, true);
                         returnBranches.add(this);
-                        upNext.add(prop);
-                        tableauxParts.add(prop);
                         break;
                     case AND:
                         And notAnd = (And)notProp;
@@ -302,9 +333,7 @@ class Branch {
                             Not notSatisNot = (Not)notSatis.proposition;
                             TableauxPart notNotSatis = new TableauxPart(new Satisfier(notSatis.referencePoint, notSatisNot.proposition), this.currentStep,current,TableauxRules.NOTNOT);
                             documentRule(expr, TableauxRules.NOTNOT);
-                            this.currentStep = notNotSatis;
-                            upNext.add(notNotSatis);
-                            tableauxParts.add(notNotSatis);
+                            addToBranch(notNotSatis, true);
                             returnBranches.add(this);
                         }
                         else if (notSatis.proposition.getType() == ExpressionTypes.AND){
@@ -319,22 +348,23 @@ class Branch {
                             Satisfier notSatisSatis = (Satisfier)notSatis.proposition;
                             TableauxPart innerNotSatis = new TableauxPart(new Not(notSatisSatis), this.currentStep,current,TableauxRules.NOTSATIS);
                             documentRule(expr, TableauxRules.NOTSATIS);
-                            this.currentStep = innerNotSatis;
-                            upNext.add(innerNotSatis);
-                            tableauxParts.add(innerNotSatis);
+                            addToBranch(innerNotSatis, true);
                             returnBranches.add(this);
                         }
                         else if(notSatis.proposition.getType() == ExpressionTypes.DIAMOND){
-                            Diamond notSatisDiamond = (Diamond) notSatis.proposition;
-                            Nominal desiredNominal = notSatis.referencePoint;
-                            Nominal result = this.currentStep.seekNotDiamondRule(desiredNominal.identifier);
-                            if(result != null){
-                                TableauxPart notSatisOldNominal = new TableauxPart(new Not(new Satisfier(result,notSatisDiamond.proposition)), this.currentStep, current,TableauxRules.NOTDIAMOND);
-                                documentRule(expr, TableauxRules.NOTDIAMOND);
-                                this.currentStep = notSatisOldNominal;
-                                upNext.add(notSatisOldNominal);
-                                tableauxParts.add(notSatisOldNominal);
-                            }
+                            applyNotDiamond(current);
+                            notDiamondInEffect = true;
+                            origNotDiamondParts.add(current);
+                            // Diamond notSatisDiamond = (Diamond) notSatis.proposition;
+                            // Nominal desiredNominal = notSatis.referencePoint;
+                            // Nominal result = this.currentStep.seekNotDiamondRule(desiredNominal.identifier);
+                            // if(result != null){
+                            //     TableauxPart notSatisOldNominal = new TableauxPart(new Not(new Satisfier(result,notSatisDiamond.proposition)), this.currentStep, current,TableauxRules.NOTDIAMOND);
+                            //     documentRule(expr, TableauxRules.NOTDIAMOND);
+                            //     this.currentStep = notSatisOldNominal;
+                            //     upNext.add(notSatisOldNominal);
+                            //     tableauxParts.add(notSatisOldNominal);
+                            // }
                             returnBranches.add(this);
                         }
                         else if(notSatis.proposition.getType() == ExpressionTypes.E){
@@ -342,11 +372,20 @@ class Branch {
                             this.notEInEffect = true;
                             this.origNotEParts.add(current);
                         }
+                        else if(notSatis.proposition.getType() == ExpressionTypes.NOMINAL){
+                            Nominal satisLoneNominal = (Nominal)notSatis.proposition;
+                            if(!nomsInBranch.contains(satisLoneNominal.identifier)){
+                                newNominal(satisLoneNominal.identifier, current, current);
+                            }
+                            returnBranches.add(this);
+                        }
+                        else if(notSatis.proposition.getType() == ExpressionTypes.PROPOSITIONAL_SYMBOL){
+                            returnBranches.add(this);
+                        }
                         else {
                             System.err.println("Attempted to break down: "+current.expr+" but encountered unexpected Expression type in Not(Satisfier(...)): "+notSatis.proposition.getType());
 
                             returnBranches.add(this);
-                            break;
                         }
                         break;
                     case NOMINAL:
@@ -455,9 +494,9 @@ class TableauxPart {
         return from.seekExpressionInBranch(model);
     }
 
-    public LinkedList<String> seekAllNominalRelations(String targetId,LinkedList<String> foundNoms){
-        LinkedList<String> returnNoms = foundNoms;
-        if(foundNoms == null){
+    public LinkedList<Satisfier> seekAllNominalRelations(String targetId,LinkedList<Satisfier> foundRelation){
+        LinkedList<Satisfier> returnNoms = foundRelation;
+        if(foundRelation == null){
             returnNoms = new LinkedList<>();
         }
         if(expr.getType() == ExpressionTypes.SATISFIER){
@@ -465,13 +504,38 @@ class TableauxPart {
             Boolean isLoneNominal = inner.proposition.getType() == ExpressionTypes.NOMINAL;
             Boolean isTargetReference = inner.referencePoint.identifier.equals(targetId);
             if(isLoneNominal && isTargetReference){
-                returnNoms.add(inner.referencePoint.identifier);
+                returnNoms.add(inner);
             }
         }
         if(from == null){
             return returnNoms;
         }
         return from.seekAllNominalRelations(targetId, returnNoms);
+    }
+
+    public LinkedList<Satisfier> seekAllNomRuleFormula(String targetId,LinkedList<Satisfier> foundNomRuleFormula){
+        LinkedList<Satisfier> returnNoms = foundNomRuleFormula;
+        if(foundNomRuleFormula == null){
+            returnNoms = new LinkedList<>();
+        }
+        if(expr.getType() == ExpressionTypes.SATISFIER){
+            Satisfier inner = (Satisfier)expr;
+            Boolean isLoneNominal = inner.proposition.getType() == ExpressionTypes.NOMINAL;
+            Boolean isLonePropSymbol = inner.proposition.getType() == ExpressionTypes.PROPOSITIONAL_SYMBOL;
+            Boolean isDiamond = inner.proposition.getType() == ExpressionTypes.DIAMOND;
+            Boolean diamondHasLonePropSymbol =  false;
+            if(isDiamond){
+                diamondHasLonePropSymbol = ((Diamond)inner.proposition).proposition.getType() == ExpressionTypes.NOMINAL;
+            }
+            Boolean isTargetReference = inner.referencePoint.identifier.equals(targetId);
+            if(((isDiamond && diamondHasLonePropSymbol) || isLonePropSymbol || isLoneNominal) && isTargetReference){
+                returnNoms.add(inner);
+            }
+        }
+        if(from == null){
+            return returnNoms;
+        }
+        return from.seekAllNomRuleFormula(targetId, returnNoms);
     }
 
     public boolean seekLoopCondition(Expression target,String selfId,Boolean rightTargetRightNominal){

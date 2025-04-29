@@ -23,7 +23,7 @@ LineTerminator = \r|\n|\r\n
 WhiteSpace     = {LineTerminator} | [ \t\f]
 
 propositional_symbol = [a-z]
-nominal = [A-Z]
+nominal = \d+
 
 diamond = "<>"
 box = "[]"
