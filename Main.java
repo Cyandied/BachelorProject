@@ -13,7 +13,7 @@ public class Main {
         System.out.println("Running test: " + testFileNam);
         Tableaux tabealux = doTableauxToExprfromFile("tests\\" + testFileNam);
         if (tabealux.rootFormula != null) {
-          analyzetableaux(tabealux, false);
+          analyzetableaux(tabealux, true);
         }
         System.out.println("");
       }
